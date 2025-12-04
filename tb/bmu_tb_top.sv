@@ -1,6 +1,7 @@
 // tb/bmu_tb_top.sv
 `timescale 1ns/1ps
-
+import uvm_pkg::*;
+`include "uvm_macros.svh"
 import rtl_pkg::*; 
 
 module bmu_tb_top;
@@ -13,7 +14,7 @@ module bmu_tb_top;
   bmu_if bmu_vif (.clk(clk), .rst_l(rst_l));
 
   // -------- DUT Instance --------
-  Bit_Manibulation_Unit dut (
+  Bit_Manipulation_Unit dut (
     .clk          (clk),                 // Top level clock
     .rst_l        (rst_l),               // Reset
     .scan_mode    (bmu_vif.scan_mode),   // Scan control
@@ -49,12 +50,17 @@ module bmu_tb_top;
     bmu_vif.b_in          = '0;
     bmu_vif.ap            = '{default: 1'b0}; 
 
-  
+    $display("[%0t] Simulation STARTED", $time);
+
     repeat (5) @(posedge clk);
     rst_l = 1'b1;
 
     repeat (50) @(posedge clk);
     $finish;
+  end
+
+  final begin
+    $display("[%0t] Simulation FINISHED", $time);
   end
 
 endmodule

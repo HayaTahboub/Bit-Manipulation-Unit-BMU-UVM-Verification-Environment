@@ -170,6 +170,6 @@ parameter rtl_param_t pt = '{
 	SB_BUS_ID              : 5'h01         ,
 	SB_BUS_PRTY            : 6'h02         ,
 	SB_BUS_TAG             : 8'h01         ,
-	TIMER_LEGAL_EN         : 5'h01  ,         
+	TIMER_LEGAL_EN         : 5'h01           
 }
 

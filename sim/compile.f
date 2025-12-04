@@ -1,5 +1,7 @@
 +incdir+../dut
 +incdir+../tb
++xmelab+no_timescale
++xmelab+nospecify
 
 // RTL files 
 ../dut/rtl_defines.sv
@@ -10,4 +12,8 @@
 
 // Testbench files
 ../tb/bmu_if.sv
+../tb/bmu_seq_item.sv
+../tb/bmu_driver.sv
 ../tb/bmu_tb_top.sv
+
+
