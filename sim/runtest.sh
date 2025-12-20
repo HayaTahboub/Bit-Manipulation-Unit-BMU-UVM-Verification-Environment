@@ -13,4 +13,8 @@ xrun -64 \
      -enable_tpe \
      -ext_src_info \
      -ext_macro_src_info \
+     -coverage all \
+     -covoverwrite \
+     -covworkdir cov_work \
      +UVM_USE_COLOR
+     

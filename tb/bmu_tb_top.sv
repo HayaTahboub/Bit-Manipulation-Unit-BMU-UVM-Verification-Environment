@@ -48,7 +48,7 @@ module bmu_tb_top;
     uvm_config_db#(virtual bmu_if.mon_mp)::set(null, "*", "mon_vif", bmu_vif);
 
     // Start UVM
-        run_test("bmu_smoke_test");
+        run_test("bmu_regression_test");
   end
 
 endmodule

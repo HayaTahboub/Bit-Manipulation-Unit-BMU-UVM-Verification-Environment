@@ -12,7 +12,7 @@ interface bmu_if (input logic clk, input logic rst_l);
   logic                csr_ren_in;      // CSR select
   logic         [31:0] csr_rddata_in;   // CSR data
   logic signed  [31:0] a_in;            // A operand
-  logic         [31:0] b_in;            // B operand
+  logic signed [31:0] b_in;            // B operand
 
   // -------- DUT outputs --------
   logic [31:0] result_ff;  // final result

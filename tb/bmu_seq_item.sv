@@ -21,11 +21,10 @@ class bmu_seq_item extends uvm_sequence_item;
   // ---------------- DUT Outputs (Expected) ----------------
   bit [31:0] exp_result;
   bit        exp_error;
+  // ---------------- Actual DUT Outputs (captured by monitor) ----------------
+  bit [31:0] act_result;
+  bit        act_error;
 
-  // ---------------- Constraints ----------------
-  constraint c_valid {
-    valid_in == 1;
-  }
 
   // ---------------- Registration ----------------
   `uvm_object_utils_begin(bmu_seq_item)
@@ -37,6 +36,8 @@ class bmu_seq_item extends uvm_sequence_item;
     `uvm_field_int(b_in          , UVM_ALL_ON)
     `uvm_field_int(exp_result    , UVM_ALL_ON | UVM_NOPRINT)
     `uvm_field_int(exp_error     , UVM_ALL_ON | UVM_NOPRINT)
+    `uvm_field_int(act_result   , UVM_ALL_ON | UVM_NOPRINT)
+    `uvm_field_int(act_error    , UVM_ALL_ON | UVM_NOPRINT)
   `uvm_object_utils_end
 
   function new(string name = "bmu_seq_item");
