@@ -42,7 +42,6 @@ class bmu_logic_err_seq extends bmu_base_seq;
 
     tr.ap = ap_cfg;
 
-    // ضمان عدم Xs على الحقول غير المتعلقة (اختياري لكنه مفيد)
     tr.scan_mode     = 1'b0;
     tr.csr_rddata_in = '0;
 

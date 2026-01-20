@@ -1,4 +1,10 @@
+//============================================================
 // tb/bmu_monitor.sv
+// BMU UVM Monitor (Latency-aware, Xcelium-safe)
+// - Captures request when valid_in==1
+// - After LATENCY_CYCLES cycles, captures act_result/act_error
+// - Sends complete transaction on analysis_port
+//============================================================
 `timescale 1ns/1ps
 
 `ifndef BMU_MONITOR_SV
@@ -10,23 +16,27 @@ import rtl_pkg::*;
 
 `include "bmu_seq_item.sv"
 
-class bmu_monitor extends uvm_component;
+class bmu_monitor extends uvm_monitor;
 
   `uvm_component_utils(bmu_monitor)
 
+  // Virtual interface
   virtual bmu_if.mon_mp vif;
+
+  // Analysis port to env/scoreboard/coverage
   uvm_analysis_port #(bmu_seq_item) item_ap;
 
+  // If DUT produces response exactly 1 cycle after request -> set 1
   localparam int unsigned LATENCY_CYCLES = 1;
 
   typedef struct {
     bmu_seq_item  tr;
-    int unsigned  countdown;
+    int unsigned  cycles_left;
   } pending_t;
 
   pending_t pending_q[$];
 
-  function new(string name = "bmu_monitor", uvm_component parent = null);
+  function new(string name="bmu_monitor", uvm_component parent=null);
     super.new(name, parent);
     item_ap = new("item_ap", this);
   endfunction
@@ -38,56 +48,66 @@ class bmu_monitor extends uvm_component;
     end
   endfunction
 
+  // ----------------------------------------------------------
+  // Helper: capture request fields into a new transaction
+  // ----------------------------------------------------------
+  function automatic bmu_seq_item capture_req();
+    bmu_seq_item t;
+    t = bmu_seq_item::type_id::create($sformatf("tr_%0t", $time), this);
+
+    t.scan_mode     = vif.scan_mode;
+    t.valid_in      = vif.valid_in;
+    t.ap            = vif.ap;
+    t.csr_ren_in    = vif.csr_ren_in;
+    t.csr_rddata_in = vif.csr_rddata_in;
+    t.a_in          = vif.a_in;
+    t.b_in          = vif.b_in;
+
+    return t;
+  endfunction
+
+  // ----------------------------------------------------------
+  // Helper: capture response fields into an existing transaction
+  // ----------------------------------------------------------
+  function automatic void capture_rsp(ref bmu_seq_item t);
+    t.act_result = vif.result_ff;
+    t.act_error  = vif.error;
+  endfunction
+
   task run_phase(uvm_phase phase);
-    int i;  // ✅ تعريف المتغير في بداية البلوك (مهم جدًا)
+    int i;
 
     `uvm_info("BMU_MONITOR", "Monitor started", UVM_LOW)
 
+    // wait reset deassert
     @(posedge vif.clk);
-    wait (vif.rst_l == 1'b1);
+    wait (vif.rst_l === 1'b1);
 
     forever begin
       @(posedge vif.clk);
-      #1ps;
+      // إذا عندك clocking block بالمون_mp الأفضل تستخدمه بدل أي delay
+      // #1ps;  // تجنّبها إذا بتسبب race عندك
 
-      if (!vif.rst_l) begin
+      if (vif.rst_l !== 1'b1) begin
         pending_q.delete();
         continue;
       end
 
-      // -------- Capture request --------
-      if (vif.valid_in === 1'b1) begin
-        pending_t p;
-
-        p.tr = bmu_seq_item::type_id::create("tr", this);
-
-        p.tr.scan_mode     = vif.scan_mode;
-        p.tr.valid_in      = vif.valid_in;
-        p.tr.ap            = vif.ap;
-        p.tr.csr_ren_in    = vif.csr_ren_in;
-        p.tr.csr_rddata_in = vif.csr_rddata_in;
-        p.tr.a_in          = vif.a_in;
-        p.tr.b_in          = vif.b_in;
-
-        p.tr.exp_result = '0;
-        p.tr.exp_error  = '0;
-
-        p.countdown = LATENCY_CYCLES;
-        pending_q.push_back(p);
-      end
-
-      // -------- Advance countdown --------
+      // ------------------------------------------------------
+      // 1) Decrement counters for already-pending transactions
+      // ------------------------------------------------------
       for (i = 0; i < pending_q.size(); i++) begin
-        if (pending_q[i].countdown > 0)
-          pending_q[i].countdown--;
+        if (pending_q[i].cycles_left > 0)
+          pending_q[i].cycles_left--;
       end
 
-      // -------- Retire ready transactions --------
+      // ------------------------------------------------------
+      // 2) Retire ready transactions (cycles_left == 0)
+      // ------------------------------------------------------
       i = 0;
       while (i < pending_q.size()) begin
-        if (pending_q[i].countdown == 0) begin
-          pending_q[i].tr.act_result = vif.result_ff;
-          pending_q[i].tr.act_error  = vif.error;
+        if (pending_q[i].cycles_left == 0) begin
+          capture_rsp(pending_q[i].tr);
           item_ap.write(pending_q[i].tr);
           pending_q.delete(i);
         end
@@ -95,9 +115,20 @@ class bmu_monitor extends uvm_component;
           i++;
         end
       end
+
+      // ------------------------------------------------------
+      // 3) Capture new request LAST (prevents same-cycle retire)
+      // ------------------------------------------------------
+      if (vif.valid_in === 1'b1) begin
+        pending_t p;
+        p.tr = capture_req();
+        p.cycles_left = LATENCY_CYCLES; // exact latency in cycles
+        pending_q.push_back(p);
+      end
+
     end
   endtask
 
 endclass : bmu_monitor
 
-`endif
+`endif // BMU_MONITOR_SV
